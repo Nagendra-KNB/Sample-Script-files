@@ -1052,7 +1052,7 @@ RUN npm install -g @angular/cli@15.2.11
 CMD ["ng", "serve", "--configuration=development", "--host", "0.0.0.0", "--port", "4200"]
 
 ```
-## Dockerfile for Bacj-End
+## Dockerfile for Back-End
 ```sh
 FROM python:3.9-slim
 
