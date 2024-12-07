@@ -965,8 +965,6 @@ sudo docker compose up -d
 ## Docker compose file
 - This is the docker compose file
 ```yml
-version: "3.8"
-
 services:
   steel_db:
     image: postgres:15
@@ -974,22 +972,26 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     networks:
-      steelgym-default:
-        ipv4_address: 172.18.0.4  # Corrected to be within the 172.18.0.0/24 subnet
+      - steelgym
     ports:
       - "5432:5432"
     volumes:
       - ./postgres:/var/lib/postgresql/data
       - ./steel_dev_db_11_04_2024.sql:/docker-entrypoint-initdb.d/steel_dev_db_11_04_2024.sql
+        #  healthcheck:
+        #      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
+        #      interval: 5s
+        #      retries: 10
+        #      timeout: 5s
+        #      start_period: 10s
 
   redis:
     image: redis:5
     container_name: redis-server
     networks:
-      steelgym-default:
-        ipv4_address: 172.18.0.5
+      - steelgym
     ports:
       - "6379:6379"
 
@@ -999,35 +1001,32 @@ services:
       dockerfile: Dockerfile
     container_name: steelgym-backend
     networks:
-      steelgym-default:
-        ipv4_address: 172.18.0.3
+      - steelgym
     ports:
       - "8000:8000"
     depends_on:
       - steel_db
       - redis
-
+    entrypoint: >
+      bash -c "/wait-for-it.sh steel_db:5432 --timeout=60 && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
   ui:
     build:
       context: ./steelgym_ui
       dockerfile: Dockerfile
     container_name: steelgym_ui
     networks:
-      steelgym-default:
-        ipv4_address: 172.18.0.2
-    environment:
-      - API_URL=http://172.18.0.3:9000  # The API URL points to backend's static IP
+      - steelgym
     ports:
       - "4200:4200"
     depends_on:
       - backend
 
 networks:
-  steelgym-default:
-    driver: bridge  # Create a bridge network for communication between containers
-    ipam:
-      config:
-        - subnet: 172.18.0.0/24  # Define a subnet for static IPs
+  steelgym:
+    driver: bridge
+
+
+
 
 ```
 ## Dockerfile for Front-End
